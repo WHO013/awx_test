@@ -15,10 +15,10 @@
     - name: "Decode Base64 and save as .zip"
       copy:
         content: "{{ zip_base64 | b64decode }}"
-        dest: "/tmp/api_output.zip"
+        dest: "api_output.zip"
 
     - name: "Extract Zip"
       unarchive:
-        src: "/tmp/api_output.zip"
-        dest: "/tmp/"
+        src: "api_output.zip"
+        dest: ""
         remote_src: yes
