@@ -17,8 +17,8 @@
         content: "{{ zip_base64 | b64decode }}"
         dest: "api_output.zip"
 
-    - name: "Extract Zip"
-      unarchive:
-        src: "api_output.zip"
-        dest: ""
-        remote_src: yes
+   # - name: "Extract Zip"
+   #   unarchive:
+    #    src: "api_output.zip"
+    #    dest: ""
+     #   remote_src: yes
