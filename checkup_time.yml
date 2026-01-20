@@ -1,0 +1,11 @@
+---
+- name: Check System Uptime
+  hosts: all
+  tasks:
+    - name: Get uptime information
+      command: uptime
+      register: uptime_output
+
+    - name: Print uptime
+      debug:
+        var: uptime_output.stdout
