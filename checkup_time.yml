@@ -1,11 +1,7 @@
----
-- name: Check System Uptime
+- name: Get System Uptime via Facts
   hosts: all
+  gather_facts: yes
   tasks:
-    - name: Get uptime information
-      command: uptime
-      register: uptime_output
-
-    - name: Print uptime
+    - name: Display uptime from facts
       debug:
-        var: uptime_output.stdout
+        msg: "The system has been up for {{ ansible_uptime_seconds }} seconds"
