@@ -1,32 +1,24 @@
 ---
-- name: Test Base64 to Zip
+- name: API Driven Base64 to Zip
   hosts: localhost
   connection: local
+  # เรากำหนดค่าเริ่มต้นเป็น null ไว้ เพื่อป้องกัน error ถ้าไม่ได้ส่งค่ามา
   vars:
-    # String ที่ผมเจนให้ด้านบน
-    zip_base64: "UEsDBAoAAAAAAIdYVlkAAAAAAAAAAAAAAAAADQAAYWhlbGxvd29ybGQudHRoZWxsbyB3b3JsZApQSwECPwAUAAoAAAAAAIdYVlkAAAAAAAAAAAAAAAAADQAkAAAAAAAAACAAAAAAAAAAYWhlbGxvd29ybGQudHAKAAAAAAIAAAAAAAAATQIAAAAAAAA="
+    zip_base64: "{{ zip_content_from_api | default('') }}"
 
   tasks:
-    - name: "1. สร้างไฟล์ ZIP จาก Base64"
+    - name: "Check if base64 string is provided"
+      fail:
+        msg: "No base64 string provided in 'zip_content_from_api'"
+      when: zip_base64 == ""
+
+    - name: "Decode Base64 and save as .zip"
       copy:
         content: "{{ zip_base64 | b64decode }}"
-        dest: "/tmp/test_hello.zip"
+        dest: "/tmp/api_output.zip"
 
-    - name: "2. สร้าง Folder สำหรับแตกไฟล์"
-      file:
-        path: "/tmp/hello_extracted"
-        state: directory
-
-    - name: "3. แตกไฟล์ ZIP"
+    - name: "Extract Zip"
       unarchive:
-        src: "/tmp/test_hello.zip"
-        dest: "/tmp/hello_extracted"
+        src: "/tmp/api_output.zip"
+        dest: "/tmp/"
         remote_src: yes
-
-    - name: "4. ตรวจสอบเนื้อหาในไฟล์ที่แตกออกมา"
-      command: cat /tmp/hello_extracted/helloworld.txt
-      register: file_content
-
-    - name: "5. แสดงผลข้อความในไฟล์"
-      debug:
-        msg: "Content in file is: {{ file_content.stdout }}"
