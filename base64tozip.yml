@@ -1,24 +1,29 @@
 ---
-- name: API Driven Base64 to Zip
+- name: API Driven Base64 to Zip (Fixed)
   hosts: localhost
   connection: local
-  # เรากำหนดค่าเริ่มต้นเป็น null ไว้ เพื่อป้องกัน error ถ้าไม่ได้ส่งค่ามา
   vars:
+    # รับค่าจาก extra_vars ผ่าน API
     zip_base64: "{{ zip_content_from_api | default('') }}"
 
   tasks:
-    - name: "Check if base64 string is provided"
-      fail:
-        msg: "No base64 string provided in 'zip_content_from_api'"
-      when: zip_base64 == ""
-
-    - name: "Decode Base64 and save as .zip"
+    - name: "1. Decode and write binary file"
       copy:
-        content: "{{ zip_base64 | b64decode }}"
-        dest: "api_output.zip"
+        # ใช้ b64decode filter และตรวจสอบว่าไม่มีช่องว่างปน
+        content: "{{ zip_base64 | trim | b64decode }}"
+        dest: "/tmp/api_output.zip"
+        mode: '0644'
 
-   # - name: "Extract Zip"
-   #   unarchive:
-    #    src: "api_output.zip"
-    #    dest: ""
-     #   remote_src: yes
+    - name: "2. Extract Zip using Command (เพื่อความชัวร์)"
+      # ใช้คำสั่ง unzip โดยตรงเผื่อโมดูล unarchive หา handler ไม่เจอ
+      # และใส่ -o เพื่อ overwrite ไฟล์เดิม
+      shell: "unzip -o /tmp/api_output.zip -d /tmp/extracted_files"
+      register: unzip_result
+      ignore_errors: yes
+
+    - name: "3. ใช้ unarchive (วิธีสำรอง ถ้าคำสั่ง unzip ไม่มีในเครื่อง)"
+      unarchive:
+        src: "/tmp/api_output.zip"
+        dest: "/tmp/"
+        remote_src: yes
+      when: unzip_result.rc != 0
