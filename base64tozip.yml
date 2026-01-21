@@ -1,7 +1,8 @@
 ---
 - name: API Driven Base64 to Zip (Fixed)
-  hosts: VM_A
-  connection: local
+  hosts: all
+  become: true
+  gather_facts: false
   vars:
     # รับค่าจาก extra_vars ผ่าน API
     zip_base64: "{{ zip_content_from_api | default('') }}"
