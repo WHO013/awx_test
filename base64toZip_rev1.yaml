@@ -59,4 +59,4 @@
         state: absent
       with_items:
         - "{{ temp_b64 }}"
-        - "{{ temp_zip }}"
+       # - "{{ temp_zip }}"
