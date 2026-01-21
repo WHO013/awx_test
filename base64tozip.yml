@@ -14,16 +14,16 @@
         dest: "/tmp/api_output.zip"
         mode: '0644'
 
-    #- name: "2. Extract Zip using Command (เพื่อความชัวร์)"
+    - name: "2. Extract Zip using Command (เพื่อความชัวร์)"
       # ใช้คำสั่ง unzip โดยตรงเผื่อโมดูล unarchive หา handler ไม่เจอ
       # และใส่ -o เพื่อ overwrite ไฟล์เดิม
-    #  shell: "unzip -o /tmp/api_output.zip -d /tmp/extracted_files"
-    #  register: unzip_result
-    #  ignore_errors: yes
+      shell: "unzip -o /tmp/api_output.zip -d /tmp/extracted_files"
+      register: unzip_result
+      ignore_errors: yes
 
-    #- name: "3. ใช้ unarchive (วิธีสำรอง ถ้าคำสั่ง unzip ไม่มีในเครื่อง)"
-   #   unarchive:
-    #    src: "/tmp/api_output.zip"
-   #     dest: "/tmp/"
-     #   remote_src: yes
-   #   when: unzip_result.rc != 0
+    - name: "3. ใช้ unarchive (วิธีสำรอง ถ้าคำสั่ง unzip ไม่มีในเครื่อง)"
+      unarchive:
+        src: "/tmp/api_output.zip"
+        dest: "/tmp/"
+        remote_src: yes
+      when: unzip_result.rc != 0
