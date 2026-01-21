@@ -5,7 +5,7 @@
   vars:
     base_dir: /home/awx
     zip_base64: "{{ zip_content_from_api | default('') }}"
-    extract_path: "{{base_dir}}/tmp/extracted_files"
+    extract_path: "{{base_dir}}/new/tmp/extracted_files"
 
   tasks:
     - name: "1. Check if Base64 variable is empty"
