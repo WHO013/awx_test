@@ -1,57 +1,62 @@
 ---
-- name: API Driven Base64 to Zip (Robust Version)
+- name: API Driven Base64 to Zip (Custom Base Directory)
   hosts: all
   become: true
   gather_facts: false
   vars:
-    # รับค่าจาก extra_vars
+    # 1. กำหนด Base Directory (เปลี่ยนที่นี่ที่เดียว)
+    base_dir: "/opt/apps/my_project"
+    
+    # 2. รับค่าจาก extra_vars
+    zip_name: "{{ zip_name | default('ORG_26_001') }}"
     zip_base64: "{{ zip_content_from_api | default('') }}"
-    zip_name: "{{ zip_name | default('output') }}"
-    extract_path: "/tmp/{{ zip_name }}"
+    
+    # 3. กำหนด Path ต่างๆ โดยอิงจาก base_dir
+    extract_path: "{{ base_dir }}/{{ zip_name }}"
+    temp_zip: "{{ base_dir }}/{{ zip_name }}.zip"
+    temp_b64: "{{ base_dir }}/{{ zip_name }}.base64"
 
   tasks:
-    - name: "1. Check if input is empty"
-      fail:
-        msg: "No base64 content received!"
-      when: zip_base64 | trim == ""
-
-    - name: "2. Ensure extraction directory exists"
+    - name: "1. Ensure Base and Extraction directories exist"
+      # สร้าง Base Directory และ Folder ปลายทางไปพร้อมกัน
       file:
-        path: "{{ extract_path }}"
+        path: "{{ item }}"
         state: directory
         mode: '0755'
+        owner: root # เปลี่ยนเป็น user ที่คุณต้องการได้
+        group: root
+      with_items:
+        - "{{ base_dir }}"
+        - "{{ extract_path }}"
 
-    - name: "3. Write Base64 string to a temp file"
-      # เขียน String ลงเป็นไฟล์ข้อความธรรมดา เพื่อป้องกันปัญหา Memory/Encoding ใน Ansible
+    - name: "2. Write Base64 string to a temp file in Base Directory"
       copy:
         content: "{{ zip_base64 | trim }}"
-        dest: "/tmp/{{ zip_name }}.base64"
+        dest: "{{ temp_b64 }}"
         mode: '0644'
+      when: zip_base64 | trim != ""
 
-    - name: "4. Decode Base64 to Zip file using Shell"
-      # ใช้คำสั่ง base64 ของระบบ Linux ในการถอดรหัส (เสถียรกว่า Filter)
-      shell: "base64 -d /tmp/{{ zip_name }}.base64 > /tmp/{{ zip_name }}.zip"
+    - name: "3. Decode Base64 to Zip file"
+      shell: "base64 -d {{ temp_b64 }} > {{ temp_zip }}"
       args:
-        creates: "/tmp/{{ zip_name }}.zip"
+        creates: "{{ temp_zip }}"
 
-    - name: "5. Extract Zip file"
-      # ใช้ unarchive โดยชี้ไปที่ directory ที่เราสร้างไว้ใน Task 2
+    - name: "4. Extract Zip file to specific directory"
       unarchive:
-        src: "/tmp/{{ zip_name }}.zip"
+        src: "{{ temp_zip }}"
         dest: "{{ extract_path }}"
         remote_src: yes
       register: extract_res
       ignore_errors: yes
 
-    - name: "6. Fallback: Extract using unzip command if unarchive fails"
-      shell: "unzip -o /tmp/{{ zip_name }}.zip -d {{ extract_path }}"
+    - name: "5. Fallback: Extract using unzip command"
+      shell: "unzip -o {{ temp_zip }} -d {{ extract_path }}"
       when: extract_res.failed
 
-    - name: "7. Cleanup temporary files"
-      # ลบไฟล์ขยะทิ้งเพื่อประหยัดพื้นที่
+    - name: "6. Cleanup temporary files"
       file:
         path: "{{ item }}"
         state: absent
       with_items:
-        - "/tmp/{{ zip_name }}.base64"
-        - "/tmp/{{ zip_name }}.zip"
+        - "{{ temp_b64 }}"
+        - "{{ temp_zip }}"
