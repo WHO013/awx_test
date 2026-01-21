@@ -41,17 +41,17 @@
       args:
         creates: "{{ temp_zip }}"
 
-    - name: "4. Extract Zip file to specific directory"
-      unarchive:
-        src: "{{ temp_zip }}"
-        dest: "{{ extract_path }}"
-        remote_src: yes
-      register: extract_res
-      ignore_errors: yes
+   # - name: "4. Extract Zip file to specific directory"
+    #  unarchive:
+     #   src: "{{ temp_zip }}"
+     #   dest: "{{ extract_path }}"
+     #   remote_src: yes
+    #  register: extract_res
+    #  ignore_errors: yes
 
-    - name: "5. Fallback: Extract using unzip command"
-      shell: "unzip -o {{ temp_zip }} -d {{ extract_path }}"
-      when: extract_res.failed
+   # - name: "5. Fallback: Extract using unzip command"
+   #   shell: "unzip -o {{ temp_zip }} -d {{ extract_path }}"
+  #    when: extract_res.failed
 
     - name: "6. Cleanup temporary files"
       file:
