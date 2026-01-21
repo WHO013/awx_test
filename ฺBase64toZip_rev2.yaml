@@ -1,19 +1,16 @@
 ---
-- name: API Driven Base64 to Zip (Save File Only)
+- name: API Driven Base64 to Zip (Fixed Path)
   hosts: all
   become: true
   gather_facts: false
   vars:
-    # 1. กำหนด Base Directory
     base_dir: "/opt/apps/my_project"
-    
-    # 2. รับค่าจาก extra_vars (zip_content_from_api)
     zip_name: "{{ zip_name | default('ORG_26_001') }}"
     zip_base64: "{{ zip_content_from_api | default('') }}"
     
-    # 3. กำหนด Path สำหรับไฟล์
-    temp_b64: "{{ base_dir/zip_name }}.base64"
-    final_zip: "{{ base_dir/zip_name }}.zip"
+    # แก้ไขจุดนี้: เชื่อม String ด้วยเครื่องหมาย / ให้ชัดเจน
+    temp_b64: "{{ base_dir }}/{{ zip_name }}.base64"
+    final_zip: "{{ base_dir }}/{{ zip_name }}.zip"
 
   tasks:
     - name: "1. Ensure Base Directory exists"
@@ -21,43 +18,26 @@
         path: "{{ base_dir }}"
         state: directory
         mode: '0755'
-        owner: root
-        group: root
 
-    - name: "2. Verify if Base64 string is provided"
-      fail:
-        msg: "Error: zip_content_from_api is empty!"
-      when: zip_base64 | trim == ""
-
-    - name: "3. Write Base64 string to a temp file"
+    - name: "2. Write Base64 string to a temp file"
       copy:
         content: "{{ zip_base64 | trim }}"
         dest: "{{ temp_b64 }}"
         mode: '0600'
+      when: zip_base64 | trim != ""
 
-    - name: "4. Decode Base64 and save as .zip file"
-      # ใช้ shell เพื่อแปลงไฟล์จาก temp_b64 เป็น .zip
-      shell: "base64 -d {{ temp_b64 }} > {{ final_zip }}"
-      args:
-        # ป้องกันการรันซ้ำถ้าไฟล์มีอยู่แล้ว (optional)
-        # creates: "{{ final_zip }}" 
-
-    - name: "5. Set permissions on the final zip file"
-      file:
-        path: "{{ final_zip }}"
-        mode: '0644'
-        owner: root
-        group: root
-
-    - name: "6. Cleanup temporary base64 file"
+    - name: "3. Decode Base64 to Zip file"
+      # ใช้เครื่องหมาย " " ครอบ Path เพื่อป้องกันกรณีชื่อไฟล์มีช่องว่าง
+      shell: "base64 -d \"{{ temp_b64 }}\" > \"{{ final_zip }}\""
+      
+    - name: "4. Cleanup temporary file"
       file:
         path: "{{ temp_b64 }}"
         state: absent
 
-    - name: "7. Verify Final File"
+    - name: "5. Verify result"
       command: "ls -lh {{ final_zip }}"
       register: final_check
 
-    - name: "Show result"
-      debug:
-        msg: "Successfully saved zip file to: {{ final_check.stdout }}"
+    - debug:
+        msg: "File saved at: {{ final_check.stdout }}"
