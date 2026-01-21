@@ -1,0 +1,57 @@
+---
+- name: API Driven Base64 to Zip (Robust Version)
+  hosts: all
+  become: true
+  gather_facts: false
+  vars:
+    # รับค่าจาก extra_vars
+    zip_base64: "{{ zip_content_from_api | default('') }}"
+    zip_name: "{{ zip_name | default('output') }}"
+    extract_path: "/tmp/{{ zip_name }}"
+
+  tasks:
+    - name: "1. Check if input is empty"
+      fail:
+        msg: "No base64 content received!"
+      when: zip_base64 | trim == ""
+
+    - name: "2. Ensure extraction directory exists"
+      file:
+        path: "{{ extract_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: "3. Write Base64 string to a temp file"
+      # เขียน String ลงเป็นไฟล์ข้อความธรรมดา เพื่อป้องกันปัญหา Memory/Encoding ใน Ansible
+      copy:
+        content: "{{ zip_base64 | trim }}"
+        dest: "/tmp/{{ zip_name }}.base64"
+        mode: '0644'
+
+    - name: "4. Decode Base64 to Zip file using Shell"
+      # ใช้คำสั่ง base64 ของระบบ Linux ในการถอดรหัส (เสถียรกว่า Filter)
+      shell: "base64 -d /tmp/{{ zip_name }}.base64 > /tmp/{{ zip_name }}.zip"
+      args:
+        creates: "/tmp/{{ zip_name }}.zip"
+
+    - name: "5. Extract Zip file"
+      # ใช้ unarchive โดยชี้ไปที่ directory ที่เราสร้างไว้ใน Task 2
+      unarchive:
+        src: "/tmp/{{ zip_name }}.zip"
+        dest: "{{ extract_path }}"
+        remote_src: yes
+      register: extract_res
+      ignore_errors: yes
+
+    - name: "6. Fallback: Extract using unzip command if unarchive fails"
+      shell: "unzip -o /tmp/{{ zip_name }}.zip -d {{ extract_path }}"
+      when: extract_res.failed
+
+    - name: "7. Cleanup temporary files"
+      # ลบไฟล์ขยะทิ้งเพื่อประหยัดพื้นที่
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "/tmp/{{ zip_name }}.base64"
+        - "/tmp/{{ zip_name }}.zip"
