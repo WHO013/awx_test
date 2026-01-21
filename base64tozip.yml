@@ -1,4 +1,4 @@
-- name: API Driven Base64 to Zip (Fixed)
+- name: API Driven Base64 to Zip (Debug Version)
   hosts: all
   become: true
   gather_facts: false
@@ -7,28 +7,38 @@
     extract_path: "/tmp/extracted_files"
 
   tasks:
-    - name: "1. Decode and write binary file"
-      copy:
-        content: "{{ zip_base64 | trim | b64decode }}"
-        dest: "/tmp/api_output.zip"
-        mode: '0644'
+    - name: "1. Check if Base64 variable is empty"
+      fail:
+        msg: "The variable zip_content_from_api is empty!"
+      when: zip_base64 | trim == ""
 
     - name: "2. Ensure extraction directory exists"
-      # ใช้ module file เพื่อสร้าง directory และกำหนดสิทธิ์
       file:
         path: "{{ extract_path }}"
         state: directory
         mode: '0755'
 
-    - name: "3. Extract Zip using Command"
-      # เพิ่มการแตกไฟล์ลงใน directory ที่สร้างไว้ในข้อ 2
-      shell: "unzip -o /tmp/api_output.zip -d {{ extract_path }}"
-      register: unzip_result
-      ignore_errors: yes
+    - name: "3. Write Base64 to temporary text file"
+      copy:
+        content: "{{ zip_base64 | trim }}"
+        dest: "/tmp/encoded_string.txt"
 
-    - name: "4. ใช้ unarchive (วิธีสำรอง)"
+    - name: "4. Decode using system base64 command"
+      # ใช้คำสั่งระบบโดยตรงเพื่อป้องกันปัญหาเรื่อง Jinja2 Filter
+      shell: "base64 -d /tmp/encoded_string.txt > /tmp/api_output.zip"
+      args:
+        executable: /bin/bash
+
+    - name: "5. Verify file type"
+      shell: "file /tmp/api_output.zip"
+      register: file_type
+
+    - name: "6. Show file type for Debug"
+      debug:
+        var: file_type.stdout
+
+    - name: "7. Extract Zip"
       unarchive:
         src: "/tmp/api_output.zip"
         dest: "{{ extract_path }}"
         remote_src: yes
-      when: unzip_result.rc != 0
