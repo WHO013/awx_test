@@ -1,30 +1,34 @@
----
 - name: API Driven Base64 to Zip (Fixed)
   hosts: all
   become: true
   gather_facts: false
   vars:
-    # รับค่าจาก extra_vars ผ่าน API
     zip_base64: "{{ zip_content_from_api | default('') }}"
+    extract_path: "/tmp/extracted_files"
 
   tasks:
     - name: "1. Decode and write binary file"
       copy:
-        # ใช้ b64decode filter และตรวจสอบว่าไม่มีช่องว่างปน
         content: "{{ zip_base64 | trim | b64decode }}"
         dest: "/tmp/api_output.zip"
         mode: '0644'
 
-    - name: "2. Extract Zip using Command (เพื่อความชัวร์)"
-      # ใช้คำสั่ง unzip โดยตรงเผื่อโมดูล unarchive หา handler ไม่เจอ
-      # และใส่ -o เพื่อ overwrite ไฟล์เดิม
-      shell: "unzip -o /tmp/api_output.zip -d /tmp/extracted_files"
+    - name: "2. Ensure extraction directory exists"
+      # ใช้ module file เพื่อสร้าง directory และกำหนดสิทธิ์
+      file:
+        path: "{{ extract_path }}"
+        state: directory
+        mode: '0755'
+
+    - name: "3. Extract Zip using Command"
+      # เพิ่มการแตกไฟล์ลงใน directory ที่สร้างไว้ในข้อ 2
+      shell: "unzip -o /tmp/api_output.zip -d {{ extract_path }}"
       register: unzip_result
       ignore_errors: yes
 
-    - name: "3. ใช้ unarchive (วิธีสำรอง ถ้าคำสั่ง unzip ไม่มีในเครื่อง)"
+    - name: "4. ใช้ unarchive (วิธีสำรอง)"
       unarchive:
         src: "/tmp/api_output.zip"
-        dest: "/tmp/"
+        dest: "{{ extract_path }}"
         remote_src: yes
       when: unzip_result.rc != 0
