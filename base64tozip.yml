@@ -1,6 +1,6 @@
 ---
 - name: API Driven Base64 to Zip (Fixed)
-  hosts: localhost
+  hosts: VM_A
   connection: local
   vars:
     # รับค่าจาก extra_vars ผ่าน API
